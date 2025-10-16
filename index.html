@@ -70,7 +70,7 @@
       // console.log(s2);
       // window.s2 = s2;
       let map;
-      const markers = [];
+      let markers = [];
       const icon = L.icon({iconUrl: "Achtung.png", iconSize: [40, 35]});
       const infoBanner = document.getElementById('info');
 
@@ -108,7 +108,6 @@
         map.on('click', function(e) {
           const marker = L.marker([e.latlng.lat, e.latlng.lng], {icon})
 		.addTo(map)
-		.bindPopup(`Marker ${markers.length + 1}<br>Lat: ${e.latlng.lat.toFixed(5)}<br>Lng: ${e.latlng.lng.toFixed(5)}`);
 	  let opacity = 1;      // TODO: use transitions instead.
 	  const seconds = 2e3,  // milliseconds to fade
 		interval = 200, // milliseconds to adjustment
@@ -118,8 +117,9 @@
 	    if (opacity > 0) return;
 	    clearInterval(timer);
 	    marker.removeFrom(map);
+	    markers = markers.filter(m => m != marker);
           }, interval);
-          markers.push(marker);
+          markers.push(marker); // TODO: use a weak map to hold against gc instead?
         });
 
         showMessage('Tap anywhere to show danger. Markers fade out.', 'instructions');
