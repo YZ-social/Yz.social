@@ -66,6 +66,9 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script type="module">
+      // import { s2 } from 'https://esm.sh/s2js';
+      // console.log(s2);
+      // window.s2 = s2;
       let map;
       const markers = [];
       const icon = L.icon({iconUrl: "Achtung.png", iconSize: [40, 35]});
@@ -112,7 +115,9 @@
 		fade = interval / seconds; // Change in opacity each adjustment.
 	  const timer = setInterval(() => {
 	    marker.setOpacity(opacity -= fade);
-	    if (opacity <= 0) clearInterval(timer);
+	    if (opacity > 0) return;
+	    clearInterval(timer);
+	    marker.removeFrom(map);
           }, interval);
           markers.push(marker);
         });
