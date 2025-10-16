@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Marker App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .info-banner {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 14px;
+            text-align: center;
+            max-width: 90%;
+        }
+        
+        .loading {
+            color: #2563eb;
+            font-weight: 500;
+        }
+        
+        .error {
+            color: #dc2626;
+            font-weight: 500;
+        }
+        
+        .instructions {
+            color: #059669;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="info" class="info-banner loading">Getting your location...</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        let map;
+        const markers = [];
+        const infoBanner = document.getElementById('info');
+        
+        function showMessage(message, type = 'loading') {
+            infoBanner.textContent = message;
+            infoBanner.className = `info-banner ${type}`;
+            
+            if (type === 'instructions') {
+                setTimeout(() => {
+                    infoBanner.style.display = 'none';
+                }, 4000);
+            }
+        }
+        
+        function initMap(lat, lng) {
+            // Initialize map centered on user's location
+            map = L.map('map').setView([lat, lng], 14);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Add a marker at user's current location
+            L.marker([lat, lng])
+                .addTo(map)
+                .bindPopup('Your Location')
+                .openPopup();
+            
+            // Add click event to drop markers
+            map.on('click', function(e) {
+                const marker = L.marker([e.latlng.lat, e.latlng.lng])
+                    .addTo(map)
+                    .bindPopup(`Marker ${markers.length + 1}<br>Lat: ${e.latlng.lat.toFixed(5)}<br>Lng: ${e.latlng.lng.toFixed(5)}`);
+                
+                markers.push(marker);
+            });
+            
+            showMessage('Tap anywhere to drop a marker', 'instructions');
+        }
+        
+        function calculateBounds(lat, lng, miles) {
+            // Approximate: 1 degree latitude ≈ 69 miles
+            // Longitude varies by latitude, using cos(lat) approximation
+            const latDelta = miles / 69;
+            const lngDelta = miles / (69 * Math.cos(lat * Math.PI / 180));
+            
+            return {
+                north: lat + latDelta,
+                south: lat - latDelta,
+                east: lng + lngDelta,
+                west: lng - lngDelta
+            };
+        }
+        
+        // Get user's geolocation
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    initMap(lat, lng);
+                },
+                (error) => {
+                    console.error('Error getting location:', error);
+                    // Default to a location if geolocation fails
+                    showMessage('Location access denied. Using default location.', 'error');
+                    setTimeout(() => {
+                        initMap(37.7749, -122.4194); // San Francisco as fallback
+                        showMessage('Tap anywhere to drop a marker', 'instructions');
+                    }, 2000);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            showMessage('Geolocation not supported. Using default location.', 'error');
+            setTimeout(() => {
+                initMap(37.7749, -122.4194);
+                showMessage('Tap anywhere to drop a marker', 'instructions');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
