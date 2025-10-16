@@ -65,9 +65,10 @@
     <div id="info" class="info-banner loading">Getting your location...</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script>
+    <script type="module">
       let map;
       const markers = [];
+      const icon = L.icon({iconUrl: "Achtung.png", iconSize: [40, 35]});
       const infoBanner = document.getElementById('info');
 
       function showMessage(message, type = 'loading', errorObject) {
@@ -102,7 +103,7 @@
 
         // Add click event to drop markers
         map.on('click', function(e) {
-          const marker = L.marker([e.latlng.lat, e.latlng.lng])
+          const marker = L.marker([e.latlng.lat, e.latlng.lng], {icon})
 		.addTo(map)
 		.bindPopup(`Marker ${markers.length + 1}<br>Lat: ${e.latlng.lat.toFixed(5)}<br>Lng: ${e.latlng.lng.toFixed(5)}`);
 	  let opacity = 1;      // TODO: use transitions instead.
