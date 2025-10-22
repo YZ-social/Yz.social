@@ -19,6 +19,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script type="module">
+      import { publish, subscribe } from './javascripts/pubSub.js';
       // import { s2 } from 'https://esm.sh/s2js';
       // console.log(s2);
       // window.s2 = s2;
@@ -26,6 +27,30 @@
       let markers = [];
       const icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
       const infoBanner = document.getElementById('info');
+      const ttl = 1 * 10e3;
+      const subscriptionKey = 'global'; // TODO: use s2 at the referencing sites, and manage subscriptions.
+
+      function showMarker({position, expiration}) { // Add marker at position, completing a fade out at expiration.
+	const now = Date.now(),
+	      remaining = expiration - now;
+	if (remaining < 0) return;  // expired.
+	const marker = L.marker(position, {icon}).addTo(map);
+	// TODO: use css transitions?
+	const seconds = remaining,  // milliseconds to fade
+	      interval = 200, // milliseconds to adjustment
+	      fade = interval / ttl; // Change in opacity each adjustment.
+	let opacity = remaining / ttl;  // We do not start at one it was reported some time ago.
+	const timer = setInterval(() => {
+	  marker.setOpacity(opacity -= fade);
+	  if (opacity > 0) return;
+	  clearInterval(timer);
+	  marker.removeFrom(map);
+	  markers = markers.filter(m => m != marker);
+        }, interval);
+
+        markers.push(marker); // TODO: use a weak map to hold against gc instead?
+      }
+      subscribe(subscriptionKey, showMarker);
 
       document.getElementById('about-btn').onclick = () =>
       L.popup(map.getCenter(), {content: `
@@ -69,22 +94,12 @@
           .bindPopup('Your Location')
           .openPopup();
 
-        // Add click event to drop markers
+        // Add click event to note postion
         map.on('click', function(e) {
-          const marker = L.marker([e.latlng.lat, e.latlng.lng], {icon})
-		.addTo(map)
-	  let opacity = 1;      // TODO: use transitions instead.
-	  const seconds = 60e3,  // milliseconds to fade
-		interval = 200, // milliseconds to adjustment
-		fade = interval / seconds; // Change in opacity each adjustment.
-	  const timer = setInterval(() => {
-	    marker.setOpacity(opacity -= fade);
-	    if (opacity > 0) return;
-	    clearInterval(timer);
-	    marker.removeFrom(map);
-	    markers = markers.filter(m => m != marker);
-          }, interval);
-          markers.push(marker); // TODO: use a weak map to hold against gc instead?
+	  const { lat, lng } = e.latlng;
+	  const position = [lat, lng];
+	  //showMarker({position, expiration: Date.now() + ttl}); // To debug by showing immediately.
+	  publish(subscriptionKey, {position, expiration: Date.now() + ttl}, ttl);
         });
 
         showMessage('Tap anywhere to show danger. Markers fade out.', 'instructions');
