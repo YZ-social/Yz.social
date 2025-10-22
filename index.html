@@ -11,12 +11,12 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             overflow: hidden;
         }
-        
+
         #map {
             width: 100vw;
             height: 100vh;
@@ -24,7 +24,7 @@
             top: 0;
             left: 0;
         }
-        
+
         .info-banner {
             position: absolute;
             top: 10px;
@@ -39,24 +39,24 @@
             text-align: center;
             max-width: 90%;
         }
-        
+
         .loading {
             color: #2563eb;
             font-weight: 500;
         }
-        
+
         .error {
             color: #dc2626;
             font-weight: 500;
         }
-        
+
         .instructions {
             color: #059669;
             font-weight: 500;
         }
 	.faded {
-	    opacity: 0;
-	    transition: opacity 2s;
+    opacity: 0;
+    transition: opacity 2s;
 	}
     </style>
 </head>
@@ -66,68 +66,261 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script type="module">
-      // import { s2 } from 'https://esm.sh/s2js';
-      // console.log(s2);
+      import { s2 } from 'https://esm.sh/s2js';
+      const { cellid, LatLng, Point, Cell, Cap, RegionCoverer } = s2;
+      const MAX_LEVEL = 30;
+      const EARTH_RADIUS_METERS = 6371e3;
+      const radii = [500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000];
+      let radiusSelection = 4; // default 2000m
+
+      const NORMAL_FILTER = "invert(0%) saturate(100%)";
+      const HIGHLIGHT_FILTER = "invert(100%) saturate(100%)";
+      const PARTIAL_FILTER = "invert(100%) saturate(5%)"
+
+// console.log(s2);
       // window.s2 = s2;
+
       let map;
       let markers = [];
+      let userLocCellIds = []; // 0 to 30, corresponding to all cell sizes
+      let refMarkers = []; // array of { lat, lng, marker, cellId, lastMouseover? }
+      const mapMarkup = []; // array of region indications
+      const subscriptions = new Map(); // cellID => array of subscribing markers
+      let minSubscriptionLevel = MAX_LEVEL; // lowest (i.e., biggest) cell level to announce to
+      let maxSubscriptionLevel = 0; // highest (smallest) level
+
       const icon = L.icon({iconUrl: "Achtung.png", iconSize: [40, 35]});
       const infoBanner = document.getElementById('info');
 
       function showMessage(message, type = 'loading', errorObject) {
 	if (errorObject) {
-	  console.error(message, errorObject);
+    console.error(message, errorObject);
 	}
         infoBanner.textContent = message;
         infoBanner.className = `info-banner ${type}`;
-            
+
         if (type === 'instructions') {
           setTimeout(() => {
             infoBanner.style.display = 'none';
           }, 4000);
         }
       }
-        
+
       function initMap(lat, lng) {
         // Initialize map centered on user's location
         map = L.map('map').setView([lat, lng], 14);
-        
+
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors',
           maxZoom: 19
         }).addTo(map);
-        
+
         // Add a marker at user's current location
-        L.marker([lat, lng])
-          .addTo(map)
-          .bindPopup('Your Location')
-          .openPopup();
+        // L.marker([lat, lng])
+        //   .addTo(map)
+          // .bindPopup('Your Location')
+          // .openPopup();
+
+        // const userLatLng = LatLng.fromDegrees(lat, lng);
+        // const userPt = Point.fromLatLng(userLatLng);
+        // // Get leaf-level CellId (level 30)
+        // const userLocCellId = Cell.fromPoint(userPt).id;
+        // for (let level = 0; level <= MAX_LEVEL; level++) {
+        //   userLocCellIds[level] = cellid.parent(userLocCellId, level);
+        // }
+
+        // drawCircleAndCells(lat, lng);
+
+        const refCluster = new PointClusterGenerator(lat, lng).generateReferenceCluster(50, 50, 3000);
+        for (const ll of refCluster) {
+          const { lat, lng } = ll;
+          const marker = L.marker([lat, lng]).addTo(map);
+          marker._icon.style.filter = NORMAL_FILTER;
+          const latLng = LatLng.fromDegrees(lat, lng);
+          const pt = Point.fromLatLng(latLng);
+          // Get leaf-level CellId (level 30)
+          const cellId = Cell.fromPoint(pt).id;
+// const distanceAngle = pt.distance(userPt);
+// const distanceMeters = distanceAngle * EARTH_RADIUS_METERS;
+// marker.bindTooltip(String(Math.round(distanceMeters))).openTooltip();
+          const markObj = {lat, lng, marker, cellId };
+          refMarkers.push(markObj);
+          marker.on('mouseover', ev => {
+            if (markObj.mouseoverElems) return;
+
+            markObj.mouseoverElems = drawCircleAndCells(lat, lng);
+          });
+          marker.on('mouseout', ev => {
+            if (!markObj.mouseoverElems) return;
+            for (const m of markObj.mouseoverElems) m.removeFrom(map);
+            markObj.mouseoverElems = null;
+          });
+        }
+
+        createRefMarkerSubscriptions();
+
+        map.on('keydown', e => {
+          const { key } = e.originalEvent;
+          let radiusChange = 0;
+          if (key === ',') radiusChange = -1;
+          else if (key === '.') radiusChange = 1;
+          if (radiusChange) {
+            const newSelection = Math.max(0, Math.min(radiusSelection + radiusChange, radii.length - 1));
+            if (newSelection !== radiusSelection) {
+              radiusSelection = newSelection;
+              for (const m of mapMarkup) m.removeFrom(map);
+              mapMarkup.length = 0;
+              drawCircleAndCells(lat, lng);
+            }
+          }
+        });
 
         // Add click event to drop markers
         map.on('click', function(e) {
-          const marker = L.marker([e.latlng.lat, e.latlng.lng], {icon})
-		.addTo(map)
-	  let opacity = 1;      // TODO: use transitions instead.
-	  const seconds = 2e3,  // milliseconds to fade
-		interval = 200, // milliseconds to adjustment
-		fade = interval / seconds; // Change in opacity each adjustment.
-	  const timer = setInterval(() => {
-	    marker.setOpacity(opacity -= fade);
-	    if (opacity > 0) return;
-	    clearInterval(timer);
-	    marker.removeFrom(map);
-	    markers = markers.filter(m => m != marker);
+          const { lat: flagLat, lng: flagLng } = e.latlng;
+          const marker = L.marker([flagLat, flagLng], {icon}).addTo(map);
+          let opacity = 1;      // TODO: use transitions instead.
+          const seconds = 2e3,  // milliseconds to fade
+          interval = 200, // milliseconds to adjustment
+          fade = interval / seconds; // Change in opacity each adjustment.
+          const timer = setInterval(() => {
+            marker.setOpacity(opacity -= fade);
+            if (opacity > 0) return;
+            clearInterval(timer);
+            marker.removeFrom(map);
+            markers = markers.filter(m => m != marker);
           }, interval);
           markers.push(marker); // TODO: use a weak map to hold against gc instead?
+
+          const flagLatLng = LatLng.fromDegrees(flagLat, flagLng);
+          const flagPt = Point.fromLatLng(flagLatLng);
+          // Get leaf-level CellId (level 30)
+          const flagCellId = Cell.fromPoint(flagPt).id;
+          // const flagCellIds = [];
+          // for (let level = 0; level <= MAX_LEVEL; level++) {
+          //   flagCellIds[level] = cellid.parent(flagCellId, level);
+          // }
+// for (const mObj of refMarkers) {
+// const { lat: mLat, lng: mLng, marker } = mObj;
+// const mLatLng = LatLng.fromDegrees(mLat, mLng);
+// const mPt = Point.fromLatLng(mLatLng);
+
+// const distanceAngle = mPt.distance(flagPt);
+// const distanceMeters = distanceAngle * EARTH_RADIUS_METERS;
+// marker.bindTooltip(String(Math.round(distanceMeters))).openTooltip();
+// }
+
+          for (let level = minSubscriptionLevel; level <= maxSubscriptionLevel; level++) {
+            const cellId = cellid.parent(flagCellId, level);
+            const subscribers = subscriptions.get(cellId) || [];
+            for (const { lat: mLat, lng: mLng, marker } of subscribers) {
+              const mLatLng = LatLng.fromDegrees(mLat, mLng);
+              const mPt = Point.fromLatLng(mLatLng);
+              const distanceAngle = mPt.distance(flagPt);
+              const distanceMeters = distanceAngle * EARTH_RADIUS_METERS;
+              const withinRadius = distanceMeters <= radii[radiusSelection];
+              marker._icon.style.filter = withinRadius ? HIGHLIGHT_FILTER : PARTIAL_FILTER;
+              setTimeout(() => marker._icon.style.filter = NORMAL_FILTER, 1000);
+            }
+          }
+
+          // let matchLevel = -1;
+          // for (const mObj of refMarkers) {
+          //   const { marker, cellId } = mObj;
+          //   for (let level = MAX_LEVEL; level >= 0; level--) {
+          //     const refCellId = flagCellIds[level];
+          //     const queryCellId = cellid.parent(cellId, level);
+          //     if (cellid.toToken(refCellId) === cellid.toToken(queryCellId)) {
+          //       // same cell, at this level
+          //       matchLevel = level;
+          //       break;
+          //     }
+          //   }
+
+          //   if (matchLevel >= 0) {
+          //     marker.bindTooltip(String(matchLevel)).openTooltip();
+          //     setTimeout(() => marker.closeTooltip(), 2000);
+          //   }
+          // }
         });
 
         showMessage('Tap anywhere to show danger. Markers fade out.', 'instructions');
       }
-      function defaultInit() { // After two second, show San Fransisco.
-	setTimeout(() => {
+
+      function drawCircleAndCells(lat, lng) {
+        const elems = [];
+        const interestRadiusMeters = radii[radiusSelection];
+        const c = L.circle(L.latLng(lat, lng), { radius: interestRadiusMeters, color: "green", weight: 2 });
+        c.addTo(map);
+        elems.push(c);
+
+        const coverCellIds = findCoverCells(lat, lng, interestRadiusMeters);
+        for (const id of coverCellIds) {
+          const cell = Cell.fromCellID(id);
+          const vertices = [0, 1, 2, 3].map(v => {
+            const pt = cell.vertex(v);
+            const ll = LatLng.fromPoint(pt);
+            return [ll.lat * 180 / Math.PI, ll.lng * 180 / Math.PI];
+          });
+          const poly = L.polygon(vertices, { color: "#ff7800", weight: 2 });
+          poly.addTo(map);
+          elems.push(poly);
+        }
+// console.log(`base level ${levelForRadius}`, coverCellIds.map(id => cellid.level(id)));
+        return elems;
+      }
+
+      function createRefMarkerSubscriptions() {
+        const interestRadiusMeters = radii[radiusSelection];
+        subscriptions.clear();
+        minSubscriptionLevel = MAX_LEVEL;
+        maxSubscriptionLevel = 0; // highest (smallest) level
+
+        for (const markObj of refMarkers) {
+          const { lat, lng } = markObj;
+          const coverCellIds = findCoverCells(lat, lng, interestRadiusMeters);
+          for (const id of coverCellIds) {
+            const level = cellid.level(id);
+            if (level < minSubscriptionLevel) minSubscriptionLevel = level;
+            if (level > maxSubscriptionLevel) maxSubscriptionLevel = level;
+
+            if (!subscriptions.has(id)) subscriptions.set(id, []);
+            subscriptions.get(id).push(markObj);
+          }
+        }
+      }
+
+      function findCoverCells(lat, lng, interestRadiusMeters) {
+        const point = Point.fromLatLng(LatLng.fromDegrees(lat, lng));
+
+        // replicating key parts of Cap.cellUnionBound():
+        // Find the maximum (i.e., finest-grained) level such that the cap contains at
+        // most [ael: at least??] one cell vertex and such that CellID.AppendVertexNeighbors() can be called.
+        const findLevel = radius => {
+          let levelForRadius = MAX_LEVEL;
+          const radiusAngle = radius / EARTH_RADIUS_METERS;
+          if (radiusAngle > 0) {
+            const deriv = 2 * Math.SQRT2 / 3;
+            levelForRadius = Math.floor(Math.log2(deriv / radiusAngle));
+            if (levelForRadius > MAX_LEVEL) levelForRadius = MAX_LEVEL;
+            if (levelForRadius < 0) levelForRadius = 0;
+          }
+          return levelForRadius;
+        };
+        const levelForRadius = findLevel(interestRadiusMeters); // - 1; // as seen in cellUnionBound: go one level bigger
+
+        const rc = new RegionCoverer({ minLevel: levelForRadius - 1, maxLevel: levelForRadius + 2, maxCells: 9 })
+        const r = Cap.fromCenterAngle(point, interestRadiusMeters / EARTH_RADIUS_METERS);
+        const coverCellIds = rc.covering(r)
+
+        return coverCellIds;
+      }
+
+      function defaultInit() { // After showing message for two seconds, show San Francisco.
+        setTimeout(() => {
           initMap(37.7749, -122.4194);
-        }, 2000);
+        }, 500);
       }
 
       // Get user's geolocation
@@ -144,14 +337,197 @@
           },
           {
             enableHighAccuracy: true,
-            timeout: 10000,
+            timeout: 5000,
             maximumAge: 0
           }
         );
       } else {
         showMessage('Geolocation not supported. Using default location.', 'error', 'fail');
-	defaultInit();
+        defaultInit();
       }
+
+      // Class to manage reference point and find matching cell levels
+      class CellMatchFinder {
+        constructor(refLat, refLng) {
+          // Validate inputs
+          if (typeof refLat !== 'number' || typeof refLng !== 'number' ||
+              Math.abs(refLat) > 90 || Math.abs(refLng) > 180) {
+            throw new Error('Invalid reference lat/lng: must be numbers, lat [-90, 90], lng [-180, 180]');
+          }
+
+          // Convert to Point
+          const latLng = LatLng.fromDegrees(refLat, refLng);
+          this.referencePoint = Point.fromLatLng(latLng);
+
+          // Get leaf-level CellId (level 30)
+          const leafCellId = Cell.fromPoint(this.referencePoint).id;
+
+          // Cache CellIds for all levels (0–30)
+          this.referenceCellIds = new Map();
+          for (let level = 0; level <= MAX_LEVEL; level++) {
+            this.referenceCellIds.set(level, cellid.parent(leafCellId, level));
+          }
+        }
+
+        // Find matching cell levels for a query point
+        findMatchingLevels(queryLat, queryLng) {
+          try {
+            // Validate input
+            if (typeof queryLat !== 'number' || typeof queryLng !== 'number' ||
+                Math.abs(queryLat) > 90 || Math.abs(queryLng) > 180) {
+              throw new Error('Invalid query lat/lng: must be numbers, lat [-90, 90], lng [-180, 180]');
+            }
+
+            console.log(`Query point (${queryLat}, ${queryLng}):`);
+
+            // Convert query point to Point
+            const queryLatLng = LatLng.fromDegrees(queryLat, queryLng);
+            const queryPoint = Point.fromLatLng(queryLatLng);
+
+            const distanceAngle = queryPoint.distance(this.referencePoint);
+            const distanceMeters = distanceAngle * EARTH_RADIUS_METERS;
+            console.log(`  Distance (m): ${Math.round(distanceMeters)}`);
+
+            // Get query point's leaf-level CellId
+            const queryLeafCellId = Cell.fromPoint(queryPoint).id;
+
+            // Find matching levels (from 30 up to 0)
+            const matchingLevels = [];
+            let lastMatchingLevel = -1; // Highest (coarsest) level where cells match
+
+            for (let level = MAX_LEVEL; level >= 0; level--) {
+              const refCellId = this.referenceCellIds.get(level);
+              const queryCellId = cellid.parent(queryLeafCellId, level);
+
+              // Compare CellIds (use toToken for string comparison or id for BigInt)
+              if (cellid.toToken(refCellId) === cellid.toToken(queryCellId)) {
+                matchingLevels.push(level);
+                lastMatchingLevel = Math.max(lastMatchingLevel, level);
+              }
+            }
+
+            // Log results
+            if (matchingLevels.length > 0) {
+              console.log(`  Matching cell levels: ${matchingLevels.sort((a, b) => b - a).join(', ')}`);
+              console.log(`  Coarsest matching level: ${lastMatchingLevel} (Cell ID: ${cellid.toToken(this.referenceCellIds.get(lastMatchingLevel))})`);
+            } else {
+              console.log('  No matching cell levels found.');
+            }
+
+            return {
+              matchingLevels, // Array of matching levels (sorted high to low)
+              lastMatchingLevel // Highest level with a match (-1 if none)
+            };
+          } catch (error) {
+            console.error('Error finding matching levels:', error.message);
+            return { matchingLevels: [], lastMatchingLevel: -1 };
+          }
+        }
+      }
+
+      // Example usage of CellMatchFinder
+      // try {
+      //   // Set reference point (San Francisco: 37.7749, -122.4194)
+      //   const finder = new CellMatchFinder(37.7749, -122.4194);
+
+      //   // Test query points
+      //   const queryPoints = [
+      //     { lat: 37.7749, lng: -122.4194 }, // Same point (should match all levels)
+      //     { lat: 37.7750, lng: -122.4195 }, // Very close (should match higher levels)
+      //     { lat: 34.0522, lng: -118.2437 }, // Los Angeles (likely matches only low levels)
+      //     { lat: 51.5074, lng: -0.1278 }    // London (likely no matches)
+      //   ];
+
+      //   queryPoints.forEach(point => {
+      //     console.log('---');
+
+      //     finder.findMatchingLevels(point.lat, point.lng);
+      //   });
+      // } catch (error) {
+      //   console.error('Error initializing finder:', error.message);
+      // }
+
+      class PointClusterGenerator {
+        constructor(refLat, refLng) {
+          // Validate inputs
+          if (typeof refLat !== 'number' || typeof refLng !== 'number' ||
+              Math.abs(refLat) > 90 || Math.abs(refLng) > 180) {
+            throw new Error('Invalid reference lat/lng: must be numbers, lat [-90, 90], lng [-180, 180]');
+          }
+
+          // Store reference point as LatLng and Point
+          this.referenceLatLng = LatLng.fromDegrees(refLat, refLng);
+          this.referencePoint = Point.fromLatLng(this.referenceLatLng);
+        }
+
+        generateReferenceCluster(numPoints, minDistanceMeters, maxDistanceMeters) {
+
+          try {
+            // Validate inputs
+            if (!Number.isInteger(numPoints) || numPoints < 0) {
+              throw new Error('Invalid numPoints: must be non-negative integer');
+            }
+            if (typeof minDistanceMeters !== 'number' || typeof maxDistanceMeters !== 'number' ||
+                minDistanceMeters < 0 || maxDistanceMeters < minDistanceMeters) {
+              throw new Error('Invalid distance range: min/max must be numbers, min >= 0, max >= min');
+            }
+
+            const points = [];
+
+            for (let i = 0; i < numPoints; i++) {
+              // Random distance (meters) and convert to angular distance (radians)
+              const distanceMeters = minDistanceMeters + Math.sqrt(Math.random()) * (maxDistanceMeters - minDistanceMeters);
+              const angularDistance = distanceMeters / EARTH_RADIUS_METERS;
+
+              // Random bearing (0 to 2π radians)
+              const bearing = Math.random() * 2 * Math.PI;
+
+              const lat1 = this.referenceLatLng.lat; // * Math.PI / 180;
+              const lng1 = this.referenceLatLng.lng; // * Math.PI / 180;
+
+              // Spherical law of cosines for new latitude
+              const lat2 = Math.asin(
+                Math.sin(lat1) * Math.cos(angularDistance) +
+                Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing)
+              );
+
+              // New longitude
+              const lng2 = lng1 + Math.atan2(
+                Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
+                Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2)
+              );
+
+              // Convert back to degrees and normalize
+              const lat2Deg = lat2 * 180 / Math.PI;
+              const lng2Deg = ((lng2 * 180 / Math.PI) + 540) % 360 - 180; // Normalize to [-180, 180]
+              points.push({lat: lat2Deg, lng: lng2Deg});
+            }
+
+            return points;
+          } catch (error) {
+            console.error('Error generating cluster:', error.message);
+            return [];
+          }
+        }
+      }
+
+      // Example usage of PointClusterGenerator
+      // try {
+      //   // Initial point (San Francisco: 37.7749, -122.4194)
+      //   const generator = new PointClusterGenerator(37.7749, -122.4194);
+
+      //   // Generate 5 points, 1–10 km away
+      //   const cluster = generator.getClusterAsLatLngArray(5, 1000, 10000);
+
+      //   // Log results
+      //   console.log('Cluster points around SF:');
+      //   cluster.forEach((point, i) => {
+      //     console.log(`Point ${i + 1}: (${point.lat.toFixed(6)}, ${point.lng.toFixed(6)})`);
+      //   });
+      // } catch (error) {
+      //   console.error('Error initializing generator:', error.message);
+      // }
+
     </script>
 </body>
 </html>
