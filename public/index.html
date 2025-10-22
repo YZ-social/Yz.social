@@ -53,7 +53,7 @@
       subscribe(subscriptionKey, showMarker);
 
       document.getElementById('about-btn').onclick = () =>
-      L.popup(map.getCenter(), {content: `
+      L.popup(map.getCenter(), {className: 'tipless', content: `
 <h1><a href="https://github.com/YZ-social/YZ.social" target="yz.mirror">Yz.social</a> <small><small>("wise social")</small></small></h1>
 <p><ul>
   <li>Report immediate danger to the public by tapping a location on the map.</li>
