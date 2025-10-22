@@ -1,4 +1,4 @@
-const WEBSOCKET_URI = "ws://localhost:3000/"; // Falsey to debug locally
+const WEBSOCKET_URI = location.origin.replace('^http', 'ws'); // Falsey to debug locally
 
 console.log(location);
 const rr = await fetch('http://localhost:3000/dummy');
