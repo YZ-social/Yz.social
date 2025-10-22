@@ -50,7 +50,7 @@
 
         markers.push(marker); // TODO: use a weak map to hold against gc instead?
       }
-      subscribe(subscriptionKey, showMarker);
+      setTimeout(() => subscribe(subscriptionKey, showMarker), 1e3);
 
       document.getElementById('about-btn').onclick = () =>
       L.popup(map.getCenter(), {className: 'tipless', content: `

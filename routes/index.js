@@ -1,9 +1,28 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+router.use('/dummy', function(req, res, next) {
+  console.log('dummy');
+  res.send('hello');
 });
 
+/*
+router.ws('/', function(ws, req) {
+  console.log({ws, req});
+  ws.on('message', function(msg) {
+    console.log({msg});
+    const {method, key, data, timeToLive} = msg;
+    switch (method) {
+    case 'publish':
+      ws.send({key, data});
+      break;
+    case 'subscribe':
+    case 'unsubscribe':
+      break;
+    default:
+      console.error(`Unrecognized method ${method}`, msg);
+    }
+  });
+});
+*/
 module.exports = router;
