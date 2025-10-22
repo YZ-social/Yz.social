@@ -16,27 +16,35 @@ const wss = new WebSocket.Server({ server }); // Create a WebSocket server attac
 const subscriptions = {};
 wss.on('connection', (ws, req) => {
   console.log('Client connected');
-  ws.xIP = req.socket.remoteAddress; // Attach IP address to socket for debugging.
+  function deleteFromKeySubs(key, keySubs = subscriptions[key]) {
+    if (!keySubs) return;
+    keySubs.delete(ws);
+    if (!keySubs.size) delete subscriptions[key];
+  }
+  function deleteWS() {
+    for (const key in subscriptions)  {
+      deleteFromKeySubs(key);
+    }
+  }
   ws.on('message', message => {
     const {method, key, timeToLive, data} = JSON.parse(message);
     let keySubs = subscriptions[key] ||= new Set();
-    console.log({method, key, data, timeToLive, ip: ws.xIP});
     switch (method) {
+    case 'ping':
+      ws.send('{"method":"pong"}');
+      break;
     case 'publish':
       const string = JSON.stringify({key, timeToLive, data});
-      console.log(Array.from(keySubs.values().map(x => x.xIP)));
       for (const ws of keySubs) {
-	console.log(string, ws.xIPs);
 	ws.send(string);
       }
       break;
     case 'subscribe':
       subscriptions[key].add(ws);
-      // TODO: time out, with renewal by app?
+      setTimeout(() => deleteFromKeySubs(key), 60 * 60e3); // Delete after an hour. Must be renewed by app.
       break;
     case 'unsubscribe':
-      keySubs.delete(ws);
-      if (!keySubs.size) delete subscriptions[key];
+      deleteFromKeySubs(key, keySubs);
       break;
     default:
       console.error(`Unrecognized method ${method}`, message);
@@ -44,11 +52,13 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
-    console.log('Client disconnected');
+    console.log(`Client disconnected ${ws.xIP}`);
+    deleteWS();
   });
 
   ws.on('error', error => {
     console.error('WebSocket error:', error);
+    deleteWS();
   });
 });
 

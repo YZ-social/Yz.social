@@ -11,6 +11,10 @@ const connection = WEBSOCKET_URI ?
 	}
       };
 
+connection.onopen = () => {
+  setInterval(() => connection.send('{"method":"ping"}'), 40e3);
+};
+
 connection.onmessage = event => { // Call the handler previously set using subscribe, if any.
   const {key, data} = JSON.parse(event.data);
   const handler = handlers[key];
@@ -20,12 +24,16 @@ connection.onmessage = event => { // Call the handler previously set using subsc
 export function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
   connection.send(JSON.stringify({method: 'publish', key, data, timeToLive}));
 }
+const renewals = {};
 export function subscribe(key, handler) { // Assign handler for key, or remove any handler if falsy.
   if (handler) {
     handlers[key] = handler;
     connection.send(JSON.stringify({method: 'subscribe', key}));
+    renewals[key] = setTimeout(() => renewals[key] && subscribe(key, handler), 55 * 60e3);
   } else {
     delete handlers[key];
+    clearTimeout(renewals[key]);
+    delete renewals[key];
     connection.send(JSON.stringify({method: 'unsubscribe', key}));
   }
 }
