@@ -1,9 +1,5 @@
 const WEBSOCKET_URI = location.origin.replace('^http', 'ws'); // Falsey to debug locally
 
-console.log(location);
-const rr = await fetch('http://localhost:3000/dummy');
-console.log('dummy got:', await rr.text());
-
 const handlers = {};
 const connection = WEBSOCKET_URI ? 
       new WebSocket(WEBSOCKET_URI) :  // fixme wss, localhost
