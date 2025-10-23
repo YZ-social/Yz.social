@@ -11,7 +11,7 @@ const connection = WEBSOCKET_URI ?
 	}
       };
 
-connection.onopen = () => {
+connection.onopen = () => { // Start ping/pong to keep the socket from closing.
   setInterval(() => connection.send('{"method":"ping"}'), 40e3);
 };
 

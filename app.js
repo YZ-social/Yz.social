@@ -51,7 +51,7 @@ wss.on('connection', (ws, req) => {
 	console.log('sending sticky', string);
 	ws.send(string);
       }
-      setTimeout(() => deleteFromKeySubs(key), SUBSCRIPTION_TIMEOUT); 
+      setTimeout(() => deleteFromKeySubs(key), SUBSCRIPTION_TIMEOUT);
       break;
     case 'unsubscribe':
       deleteFromKeySubs(key, keySubs);
