@@ -12,13 +12,15 @@ const connection = WEBSOCKET_URI ?
       };
 window.connection = connection; // for debugging
 
-connection.onopen = () => { // Start ping/pong to keep the socket from closing.
-  setInterval(() => connection.send('{"method":"ping"}'), 40e3);
-};
+const promise = new Promise(resolve => 
+  connection.onopen = () => { // Start ping/pong to keep the socket from closing.
+    resolve();
+    setInterval(() => connection.send('{"method":"ping"}'), 40e3);
+  });
 
 connection.onclose = event => {
   const more = event.reason ? ' ' + event.reason : '';
-  showMessage('The server connection has closed. Please reload.' + more, 'error');
+  window.showMessage('The server connection has closed. Please reload.' + more, 'error');
 }
 
 connection.onmessage = event => { // Call the handler previously set using subscribe, if any.
@@ -27,11 +29,13 @@ connection.onmessage = event => { // Call the handler previously set using subsc
   handler?.(data);
 };
 
-export function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
+export async function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
+  await promise;
   connection.send(JSON.stringify({method: 'publish', key, data, timeToLive}));
 }
 const renewals = {};
-export function subscribe(key, handler) { // Assign handler for key, or remove any handler if falsy.
+export async function subscribe(key, handler) { // Assign handler for key, or remove any handler if falsy.
+  await promise;
   if (handler) {
     handlers[key] = handler;
     connection.send(JSON.stringify({method: 'subscribe', key}));
