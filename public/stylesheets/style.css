@@ -59,9 +59,12 @@ body {
     padding: 0;
     transition: transform 0.2s ease;
 }
-
 .about-button:hover {
     transform: scale(1.1);
+}
+#qrButton {
+    background: none;
+    border: none;
 }
 
 .owl-image {
@@ -70,7 +73,12 @@ body {
     display: block;
     filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
 }
-
+.qr-image {
+    width: 40px;
+    height: auto;
+    background: none;
+    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
+}
 .about-container {
     position: fixed;
     top: 20px;
@@ -78,9 +86,14 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    z-index: 1000;
+    z-index: 400;
 }
-
+.qr-container {
+    z-index: 400;
+    bottom: 0;
+    left: 0;
+    position: fixed;
+}
 .about-text {
     color: #bf5107;
     font-family: Arial, sans-serif;
@@ -92,4 +105,24 @@ body {
 
 .tipless .leaflet-popup-tip {
     display: none;
+}
+
+#qrDisplayContainer {
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    z-index: 600;
+    position: relative;
+    display: flex;
+    justify-content: center; /* Centers horizontally */
+    align-items: center;    /* Centers vertically */
+}
+#qrDisplay {
+    background: white;
+    position: relative;
+    width: 300px;
+    height: 300px;
+}
+.hidden {
+    display: none !important;
 }

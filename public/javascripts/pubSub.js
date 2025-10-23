@@ -10,10 +10,16 @@ const connection = WEBSOCKET_URI ?
 	  this.onmessage( {data: JSON.stringify(data)} ); // Fake an Event object.
 	}
       };
+window.connection = connection; // for debugging
 
 connection.onopen = () => { // Start ping/pong to keep the socket from closing.
   setInterval(() => connection.send('{"method":"ping"}'), 40e3);
 };
+
+connection.onclose = event => {
+  const more = event.reason ? ' ' + event.reason : '';
+  showMessage('The server connection has closed. Please reload.' + more, 'error');
+}
 
 connection.onmessage = event => { // Call the handler previously set using subscribe, if any.
   const {key, data} = JSON.parse(event.data);

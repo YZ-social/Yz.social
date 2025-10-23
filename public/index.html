@@ -17,6 +17,14 @@
         <img src="images/YZ Owl.png" alt="YZ Owl" class="owl-image">
       </button>
     </div>
+    <div class="qr-container">
+      <button id="qrButton">
+        <img src="images/qr.png" alt="qr code" class="qr-image">
+      </button>
+    </div>
+    <div id="qrDisplayContainer" class="hidden">
+      <div id="qrDisplay"></div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script type="module">
@@ -54,21 +62,57 @@
 
       document.getElementById('about-btn').onclick = () =>
       L.popup(map.getCenter(), {className: 'tipless', content: `
-<h1><a href="https://github.com/YZ-social/YZ.social" target="yz.mirror">Yz.social</a> <small><small>("wise social")</small></small></h1>
+<h1><a href="https://github.com/YZ-social/flag?tab=readme-ov-file#yzsocial" target="yz.mirror">Yz.social</a> <small><small>("wise social")</small></small></h1>
 <p><ul>
   <li>Report immediate danger to the public by tapping a location on the map.</li>
   <li>The locations are shared over anonymous p2p with other users in your area.</li>
   <li>Reports fade away over 10 minutes.</li>
 </ul></p>
-<p>A <a href="https://github.com/YZ-social/YZ.social" target="yz.mirror">mirror of this app</a> can be run by anyone, in case this site is taken down.</p>
+<p>A <a href="https://github.com/YZ-social/flag" target="yz.mirror">mirror of this app</a> can be run by anyone, in case this site is taken down.</p>
+<p>Yz.social gratefully uses open software from:<br/>
+<a href="https://leafletjs.com/" target="yz.other">Leaflet</a>,
+<a href="https://www.openstreetmap.org/" target="yz.other">OpenStreetMap</a>,
+<a href="http://s2geometry.io" target="yz.other">S2Geometry</a>,
+<a href="https://github.com/kozakdenys/qr-code-styling" target="yz.other">qr-code-styling</a>,
+<a href="https://expressjs.com/" target="yz.other">Express.js</a>,
+<a href="https://nodejs.org/" target="yz.other">Node.js</a>,
+<a href="https://github.com/YZ-social" target="yz.other">Yz</a>
+</p>
 
          `}).openOn(map);
-      //new QRCodeStyling({width: 300, height: 300,type: "svg", data: location.href}).append(canvas);
+      var qrDisplayContainer = document.getElementById('qrDisplayContainer');
+      var qrDisplay = document.getElementById('qrDisplay');
+      document.getElementById('qrButton').onclick = () => { // generate (and display) qr code on-demand (in case url changes)
+	const qr = new QRCodeStyling({
+          width: 300,
+          height: 300,
+          type: "svg",
+          data: location.href,
+          dotsOptions: {
+            color: "#bf5107",
+            type: "rounded"
+          },
+          backgroundOptions: {
+            color: "#e9ebee",
+          },
+          image: "images/YZ Owl.png",
+          imageOptions: {
+            crossOrigin: "anonymous",
+            margin: 10
+          }
+	});
+	qrDisplay.innerHTML = '';
+	qr.append(qrDisplay);
+	qrDisplayContainer.classList.toggle('hidden', false);
+      }
+      qrDisplayContainer.onclick = () => qrDisplayContainer.classList.toggle('hidden', true);
 
       function showMessage(message, type = 'loading', errorObject) {
+	console.log({message, type, errorObject});
         if (errorObject) {
           console.error(message, errorObject);
         }
+	infoBanner.style = '';
         infoBanner.textContent = message;
         infoBanner.className = `info-banner ${type}`;
 
@@ -78,6 +122,7 @@
           }, 4000);
         }
       }
+      window.showMessage = showMessage; // For use in pubSub. FIXME.
 
       function initMap(lat, lng) {
         // Initialize map centered on user's location

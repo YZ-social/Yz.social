@@ -15,7 +15,7 @@ Some apps of this type have been removed from mobile app stores, while others re
 
 Additionally, the source code is available right here so that a mirror can be hosted by anywone. 
 
-The cool thing about the implementation, though, is that all the mirrors share the same data through peer-to-peer connections. There is no central database to be brought down.
+The cool thing about the implementation, though, is that all the mirrors share the same data through peer-to-peer connections. There is no central database to be brought down. _FIXME: Current version does not work this way yet._
 
 ## Running a Mirror
 
