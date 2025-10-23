@@ -3,7 +3,7 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
-
+process.title = 'yz.social';
 var app = express();
 
 //var expressWs = require('express-ws')(app); // Must be before defining routers.

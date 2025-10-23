@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "start": "node app.js",
+    "stop": "pkill yz.social",
+    "background": "npm stop; (npm start 1>server.log 2>&1 &); sleep 1",
     "xstart": "node ./bin/www"
   },
   "dependencies": {
