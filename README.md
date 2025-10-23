@@ -19,7 +19,7 @@ The cool thing about the implementation, though, is that all the mirrors share t
 
 ## Running a Mirror
 
-You can run a complete server with:
+You can run a complete application server with:
 
 ```
 npm install yz.social # Oops! FIXME Not published to npm yet!
@@ -28,12 +28,14 @@ git clone https://github.com/YZ-social/flag.git; cd flag  # FIXME: will be moved
 npm start # Now visit http://localhost:3000
 ```
 
-However, to visit the page on another device, the server must use `https`. This is usually done with a front end such as nginx or OpenResty, and most commercial setups already operate this way.
+However, to visit the page on another device, the server must use `https`. This is usually done with a front end (aka reverse proxy server) such as nginx or OpenResty, and most commercial setups already operate this way.
 
-The server does a few things:
+The application server does a few things:
 1. It serves the static client files.
 2. It provides a means of connecting to the p2p network that is shared among all the mirrors.
 
 This is done with a very minimal ExpressJS server. If you already have such a server set up, you can just:
-1. Add or link public/ to the directory of static client files already being served.
+1. Add or link public/ to the directory of static client files already being served. E.g., 
+  - If you want to serve the static client files from an nginx front end, you can specify `root path_to_yz.social_directory/public;` in your nginx.conf.
+  - If you want to serve the static client files from an existing ExpressJS app server, you can specify `app.use(express.static(path_to_yz.social_directory/public));`
 2. Add the router FIXME.

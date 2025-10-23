@@ -18,7 +18,7 @@ const sticky = {};
 const SUBSCRIPTION_TIMEOUT = 60 * 60e3; // Delete after an hour. Must be renewed by app.
 const PUBLISH_TIMEOUT = 10 * 60e3;
 wss.on('connection', (ws, req) => {
-  console.log('Client connected');
+  console.log('Client connected', req.url);
   function deleteFromKeySubs(key, keySubs = subscriptions[key]) {
     if (!keySubs) return;
     keySubs.delete(ws);

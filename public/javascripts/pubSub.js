@@ -1,4 +1,4 @@
-const WEBSOCKET_URI = location.origin.replace('^http', 'ws'); // Falsey to debug locally
+const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey to debug locally
 
 const handlers = {};
 const connection = WEBSOCKET_URI ? 
