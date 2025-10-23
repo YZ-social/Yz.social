@@ -14,6 +14,9 @@ var server = http.createServer(app);
 const WebSocket = require('ws');
 const wss = new WebSocket.Server({ server }); // Create a WebSocket server attached to the HTTP server
 const subscriptions = {};
+const sticky = {};
+const SUBSCRIPTION_TIMEOUT = 60 * 60e3; // Delete after an hour. Must be renewed by app.
+const PUBLISH_TIMEOUT = 10 * 60e3;
 wss.on('connection', (ws, req) => {
   console.log('Client connected');
   function deleteFromKeySubs(key, keySubs = subscriptions[key]) {
@@ -38,10 +41,17 @@ wss.on('connection', (ws, req) => {
       for (const ws of keySubs) {
 	ws.send(string);
       }
+      const existing = sticky[key] ||= new Set();
+      existing.add(string);
+      setTimeout(() => { existing.delete(string); if (!existing.size) delete sticky[key]; } , PUBLISH_TIMEOUT);
       break;
     case 'subscribe':
       subscriptions[key].add(ws);
-      setTimeout(() => deleteFromKeySubs(key), 60 * 60e3); // Delete after an hour. Must be renewed by app.
+      for (const string of (sticky[key] || [])) {
+	console.log('sending sticky', string);
+	ws.send(string);
+      }
+      setTimeout(() => deleteFromKeySubs(key), SUBSCRIPTION_TIMEOUT); 
       break;
     case 'unsubscribe':
       deleteFromKeySubs(key, keySubs);

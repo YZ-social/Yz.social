@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yz.social</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <link rel="stylesheet" href="stylesheets/style.css" />
-</head>
-<body>
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+  </head>
+  <body>
     <div id="map"></div>
     <div id="info" class="info-banner loading">Getting your location...</div>
     <div class="about-container">
       <div class="about-text">About</div>
       <button id="about-btn" class="about-button">
-	<img src="images/YZ Owl.png" alt="YZ Owl" class="owl-image">
+        <img src="images/YZ Owl.png" alt="YZ Owl" class="owl-image">
       </button>
     </div>
 
@@ -27,30 +28,29 @@
       let markers = [];
       const icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
       const infoBanner = document.getElementById('info');
-      const ttl = 1 * 10e3;
+      const ttl = 10 * 10e3;
       const subscriptionKey = 'global'; // TODO: use s2 at the referencing sites, and manage subscriptions.
 
       function showMarker({position, expiration}) { // Add marker at position, completing a fade out at expiration.
-	const now = Date.now(),
-	      remaining = expiration - now;
-	if (remaining < 0) return;  // expired.
-	const marker = L.marker(position, {icon}).addTo(map);
-	// TODO: use css transitions?
-	const seconds = remaining,  // milliseconds to fade
-	      interval = 200, // milliseconds to adjustment
-	      fade = interval / ttl; // Change in opacity each adjustment.
-	let opacity = remaining / ttl;  // We do not start at one it was reported some time ago.
-	const timer = setInterval(() => {
-	  marker.setOpacity(opacity -= fade);
-	  if (opacity > 0) return;
-	  clearInterval(timer);
-	  marker.removeFrom(map);
-	  markers = markers.filter(m => m != marker);
+        const now = Date.now(),
+              remaining = expiration - now;
+        if (remaining < 0) return;  // expired.
+        const marker = L.marker(position, {icon}).addTo(map);
+        // TODO: use css transitions?
+        const seconds = remaining,  // milliseconds to fade
+              interval = 200, // milliseconds to adjustment
+              fade = interval / ttl; // Change in opacity each adjustment.
+        let opacity = remaining / ttl;  // We do not start at one it was reported some time ago.
+        const timer = setInterval(() => {
+          marker.setOpacity(opacity -= fade);
+          if (opacity > 0) return;
+          clearInterval(timer);
+          marker.removeFrom(map);
+          markers = markers.filter(m => m != marker);
         }, interval);
 
         markers.push(marker); // TODO: use a weak map to hold against gc instead?
       }
-      setTimeout(() => subscribe(subscriptionKey, showMarker), 1e3);
 
       document.getElementById('about-btn').onclick = () =>
       L.popup(map.getCenter(), {className: 'tipless', content: `
@@ -63,21 +63,22 @@
 <p>A <a href="https://github.com/YZ-social/YZ.social" target="yz.mirror">mirror of this app</a> can be run by anyone, in case this site is taken down.</p>
 
          `}).openOn(map);
+      //new QRCodeStyling({width: 300, height: 300,type: "svg", data: location.href}).append(canvas);
 
       function showMessage(message, type = 'loading', errorObject) {
-	if (errorObject) {
-	  console.error(message, errorObject);
-	}
+        if (errorObject) {
+          console.error(message, errorObject);
+        }
         infoBanner.textContent = message;
         infoBanner.className = `info-banner ${type}`;
-            
+
         if (type === 'instructions') {
           setTimeout(() => {
             infoBanner.style.display = 'none';
           }, 4000);
         }
       }
-        
+
       function initMap(lat, lng) {
         // Initialize map centered on user's location
         window.mmap = map = L.map('map').setView([lat, lng], 14);
@@ -96,16 +97,17 @@
 
         // Add click event to note postion
         map.on('click', function(e) {
-	  const { lat, lng } = e.latlng;
-	  const position = [lat, lng];
-	  //showMarker({position, expiration: Date.now() + ttl}); // To debug by showing immediately.
-	  publish(subscriptionKey, {position, expiration: Date.now() + ttl}, ttl);
+          const { lat, lng } = e.latlng;
+          const position = [lat, lng];
+          //showMarker({position, expiration: Date.now() + ttl}); // To debug by showing immediately.
+          publish(subscriptionKey, {position, expiration: Date.now() + ttl}, ttl);
         });
 
+        subscribe(subscriptionKey, showMarker);
         showMessage('Tap anywhere to show danger. Markers fade out.', 'instructions');
       }
       function defaultInit() { // After two second, show San Fransisco.
-	setTimeout(() => {
+        setTimeout(() => {
           initMap(37.7749, -122.4194);
         }, 2000);
       }
@@ -130,8 +132,8 @@
         );
       } else {
         showMessage('Geolocation not supported. Using default location.', 'error', 'fail');
-	defaultInit();
+        defaultInit();
       }
     </script>
-</body>
+  </body>
 </html>
