@@ -1,13 +1,10 @@
 import { publish, subscribe } from './pubSub.js';
-// import { s2 } from 'https://esm.sh/s2js';
-// console.log(s2);
-// window.s2 = s2;
+import { getContainingCells, findCoverCellsByCenterAndPoint} from './s2.js';
 let map;
 let markers = [];
 const icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
 const infoBanner = document.getElementById('info');
 const ttl = 10 * 10e3;
-const subscriptionKey = 'global'; // TODO: use s2 at the referencing sites, and manage subscriptions.
 
 function showMarker({position, expiration}) { // Add marker at position, completing a fade out at expiration.
   const now = Date.now(),
@@ -84,6 +81,17 @@ function showMessage(message, type = 'loading', errorObject) {
 }
 window.showMessage = showMessage; // For use in pubSub. FIXME.
 
+let subscriptions = [];
+function updateSubscriptions() {
+  const center = map.getCenter();
+  const bounds = map.getBounds();
+  const northEast = bounds.getNorthEast();
+  const cells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng);
+  for (const cell of subscriptions) subscribe(cell, null);
+  for (const cell of cells) subscribe(cell, showMarker);
+  subscriptions = cells;
+}
+
 function initMap(lat, lng) {
   // Initialize map centered on user's location
   window.mmap = map = L.map('map').setView([lat, lng], 14);
@@ -104,11 +112,16 @@ function initMap(lat, lng) {
   map.on('click', function(e) {
     const { lat, lng } = e.latlng;
     const position = [lat, lng];
+    const cells = getContainingCells(lat, lng);
+    for (const cell of cells) {
+      publish(cell, {position, expiration: Date.now() + ttl}, ttl);      
+    }
     //showMarker({position, expiration: Date.now() + ttl}); // To debug by showing immediately.
-    publish(subscriptionKey, {position, expiration: Date.now() + ttl}, ttl);
   });
 
-  subscribe(subscriptionKey, showMarker);
+  map.on('moveend', updateSubscriptions);
+
+  updateSubscriptions();
   showMessage('Tap anywhere to mark a concern. Markers fade after 10 min.', 'instructions');
 }
 function defaultInit() { // After two second, show San Fransisco.

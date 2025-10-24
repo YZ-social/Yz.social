@@ -44,7 +44,8 @@ wss.on('connection', (ws, req) => {
     const {method, key, timeToLive, data} = JSON.parse(message);
     let keySubs = subscriptions[key] ||= new Set();
     switch (method) {
-    case 'ping': // B
+    case 'ping': // Browser might not handle server ping frames, we have the client send
+      // application-level pings to keep things open.
       ws.send('{"method":"pong"}');
       break;
     case 'publish':

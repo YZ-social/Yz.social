@@ -31,11 +31,13 @@ connection.onmessage = event => { // Call the handler previously set using subsc
 
 export async function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
   await promise;
+  key = key.toString();
   connection.send(JSON.stringify({method: 'publish', key, data, timeToLive}));
 }
 const renewals = {};
 export async function subscribe(key, handler) { // Assign handler for key, or remove any handler if falsy.
   await promise;
+  key = key.toString();
   if (handler) {
     handlers[key] = handler;
     connection.send(JSON.stringify({method: 'subscribe', key}));
