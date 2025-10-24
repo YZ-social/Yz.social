@@ -109,7 +109,7 @@ function initMap(lat, lng) {
   });
 
   subscribe(subscriptionKey, showMarker);
-  showMessage('Tap anywhere to show danger. Markers fade out.', 'instructions');
+  showMessage('Tap anywhere to mark a concern. Markers fade after 10 min.', 'instructions');
 }
 function defaultInit() { // After two second, show San Fransisco.
   setTimeout(() => {
