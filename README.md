@@ -24,7 +24,7 @@ You can run a complete application server with:
 ```
 npm install yz.social # Oops! FIXME Not published to npm yet!
 # or
-git clone https://github.com/YZ-social/flag.git; cd flag  # FIXME: will be moved to YZ.social
+git clone https://github.com/YZ-social/Yz.social.git; cd Yz.social
 npm start # Now visit http://localhost:3000
 ```
 
