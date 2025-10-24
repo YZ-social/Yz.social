@@ -1,7 +1,5 @@
 # Yz.social
 
-> _This repo location is temporary, and will be brought over to the [YZ.social repo](https://github.com/YZ-social/YZ.social)._
-
 ## The App
 
 Wise social lets you report immediate danger to the public by tapping a location on the map.
