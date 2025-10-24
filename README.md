@@ -23,6 +23,7 @@ You can run a complete application server with:
 npm install yz.social # Oops! FIXME Not published to npm yet!
 # or
 git clone https://github.com/YZ-social/Yz.social.git; cd Yz.social
+# and then
 npm start # Now visit http://localhost:3000
 ```
 
