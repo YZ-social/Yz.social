@@ -5,7 +5,7 @@
  */
 
 var app = require('../app');
-var debug = require('debug')('flag:server');
+var debug = require('debug')('yz.social:server');
 var http = require('http');
 
 /**
