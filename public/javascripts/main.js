@@ -30,24 +30,7 @@ function showMarker({position, expiration}) { // Add marker at position, complet
   markers.push(marker); // TODO: use a weak map to hold against gc instead?
 }
 
-let aboutPopup = L.popup({className: 'tipless', content: `
-<h1><a href="https://github.com/YZ-social/Yz.social?tab=readme-ov-file#yzsocial" target="yz.mirror">Yz.social</a> <small><small>("wise social")</small></small></h1>
-<p><ul>
-  <li>Report immediate danger to the public by tapping a location on the map.</li>
-  <li>The locations are shared over anonymous p2p with other users in your area.</li>
-  <li>Reports fade away over 10 minutes.</li>
-</ul></p>
-<p>A <a href="https://github.com/YZ-social/Yz.social" target="yz.mirror">mirror of this app</a> can be run by anyone, in case this site is taken down.</p>
-<p>Yz.social gratefully uses open software from:<br/>
-<a href="https://leafletjs.com/" target="yz.other">Leaflet</a>,
-<a href="https://www.openstreetmap.org/" target="yz.other">OpenStreetMap</a>,
-<a href="http://s2geometry.io" target="yz.other">S2Geometry</a>,
-<a href="https://github.com/kozakdenys/qr-code-styling" target="yz.other">qr-code-styling</a>,
-<a href="https://expressjs.com/" target="yz.other">Express.js</a>,
-<a href="https://nodejs.org/" target="yz.other">Node.js</a>,
-<a href="https://github.com/YZ-social" target="yz.other">Yz</a>
-</p>
-         `});
+let aboutPopup = L.popup({className: 'tipless', content: document.getElementById('aboutContent').innerHTML});
 document.getElementById('about-btn').onclick = () => {
   let center = map.getCenter();
   if (aboutPopup.isShowing) {
