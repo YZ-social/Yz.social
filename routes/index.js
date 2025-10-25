@@ -17,7 +17,9 @@ const PUBLISH_TIMEOUT = 10 * 60e3;      // Delete after 10 minutes.
 const wss = new WebSocket.Server({noServer: true});
 
 router.get('/ws', (req, res, next) => { // Since we specified noServer, we must handleUpgrade here.
-  if (req.headers.upgrade !== 'websocket') return next();
+  const {upgrade, connection} = req.headers;
+  if (upgrade !== 'websocket') return next();
+  if (!connection.includes('Upgrade')) return next();
   // The usual path for explicitly handling upgrade is through
   //     server.on('upgrade', function upgrade(req, socket, head) { .... });
   // But we don't have server here. (It is defined in www and app has no knowledge of it.)
@@ -40,6 +42,8 @@ wss.on('connection', (ws, req) => {
       deleteFromKeySubs(key);
     }
   }
+  let heartbeat = setInterval(() => ws.ping(), 2e3);
+  ws.on('pong', () => console.log(`pong`)); // FIXME: here for debugging
   ws.on('message', message => {
     const {method, key, timeToLive, data} = JSON.parse(message);
     let keySubs = subscriptions[key] ||= new Set();
@@ -74,7 +78,8 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
-    console.log(`Client disconnected ${ws.xIP}`);
+    console.log(`Client disconnected`);
+    clearInterval(heartbeat);
     deleteWS();
   });
 
