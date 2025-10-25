@@ -87,8 +87,8 @@ function updateSubscriptions() {
   const bounds = map.getBounds();
   const northEast = bounds.getNorthEast();
   const cells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng);
-  for (const cell of subscriptions) subscribe(cell, null);
-  for (const cell of cells) subscribe(cell, showMarker);
+  for (const cell of subscriptions) cells.includes(cell) || subscribe(cell, null); 
+  for (const cell of cells) subscriptions.includes(cell) || subscribe(cell, showMarker);
   subscriptions = cells;
 }
 
