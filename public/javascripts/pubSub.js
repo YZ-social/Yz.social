@@ -12,14 +12,16 @@ const connection = WEBSOCKET_URI ?
       };
 window.connection = connection; // for debugging
 
+let clientHeartbeat;
 const promise = new Promise(resolve => 
   connection.onopen = () => { // Start ping/pong to keep the socket from closing.
     resolve();
-    setInterval(() => connection.send('{"method":"ping"}'), 40e3);
+    clientHeartbeat = setInterval(() => connection.send('{"method":"ping"}'), 10e3);
   });
 
 connection.onclose = event => {
   const more = event.reason ? ' ' + event.reason : '';
+  clearInterval(clientHeartbeat);
   window.showMessage('The server connection has closed. Please reload.' + more, 'error');
 }
 
