@@ -40,24 +40,44 @@ document.getElementById('qrButton').onclick = () => { // generate (and display) 
 }
 qrDisplayContainer.onclick = () => qrDisplayContainer.classList.toggle('hidden', true);
 
-setupNetwork();
+let positionWatch;
+async function initialize(doDelay) { // Setup everything, or reset things.
+  showMessage('');
+  if (doDelay) await new Promise(resolve => setTimeout(resolve, 1e3)); // For online/visibility handlers.
 
-if ('geolocation' in navigator) { // Get user's geolocation
-  navigator.geolocation.watchPosition(
-    position => {
-      const {latitude, longitude} = position.coords;
-      console.log([latitude, longitude]); window.updateLocation = updateLocation;
-      updateLocation(latitude, longitude);
-    }, error => {
-      showMessage('Location access denied. Using default location.', 'error', error);
-      defaultInit();
-    }, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
-  );
-} else {
-  showMessage('Geolocation not supported. Using default location.', 'error', 'fail');
-  defaultInit();
+  console.log('initializing', document.visibilityState, navigator.onLine ? 'online' : 'offline');
+  if (document.visibilityState !== 'visible') return;
+  if (!navigator.onLine) {
+    showMessage('No network connection.', 'error');
+    return;
+  }
+
+  setupNetwork(); // No-op if already open.
+  const {geolocation} = navigator;  // Get user's geolocation
+  if (geolocation) {
+    geolocation.clearWatch(positionWatch);
+    positionWatch = geolocation.watchPosition(
+      position => {
+	const {latitude, longitude} = position.coords;
+	updateLocation(latitude, longitude);
+      }, error => {
+	if (navigator.onLine) {
+	  showMessage('Location access denied. Using default location.', 'error', error);
+	  defaultInit();
+	} else {
+	  showMessage('No network connection.', 'error');
+	}
+      }, {
+	enableHighAccuracy: true,
+	timeout: 10000,
+	maximumAge: 0
+      }
+    );
+  } else {
+    showMessage('Geolocation not supported. Using default location.', 'error', 'fail');
+    defaultInit();
+  }
 }
+document.addEventListener('visibilitychange', initialize);
+window.addEventListener('online', initialize);
+initialize();

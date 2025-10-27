@@ -6,17 +6,18 @@ const ttl = 10 * 10e3;
 
 const infoBanner = document.getElementById('info');
 export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
-  if (errorObject) {
-    console.error(message, errorObject);
+  if (errorObject) console.error(message, errorObject);
+  if (!message) {
+    infoBanner.style.display = 'none';
+    return;
   }
+  
   infoBanner.style = '';
   infoBanner.textContent = message;
   infoBanner.className = `info-banner ${type}`;
 
   if (type === 'instructions') {
-    setTimeout(() => {
-      infoBanner.style.display = 'none';
-    }, 4000);
+    setTimeout(() => infoBanner.style.display = 'none', 4000);
   }
 }
 
@@ -88,15 +89,19 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   showMessage('Tap anywhere to mark a concern. Markers fade after 10 min.', 'instructions');
 }
 
-export function defaultInit() { // After two seconds, show San Fransisco.
-  setTimeout(() => {
-    initMap(37.7749, -122.4194);
-  }, 2000);
-}
-
 export function updateLocation(lat, lng) {
-  if (!map) return initMap(lat, lng);
+  if (!map) {
+    initMap(lat, lng);
+    return;
+  }
   const latLng = [lat, lng];
   yourLocation.setLatLng(latLng);
   map.panTo(latLng);
 }
+
+export function defaultInit() { // After two seconds, show San Fransisco.
+  setTimeout(() => {
+    updateLocation(37.7749, -122.4194);
+  }, 2000);
+}
+

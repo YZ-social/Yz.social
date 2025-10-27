@@ -5,8 +5,13 @@ const handlers = {}; // Mapping key => function(messageData) for all active subc
 
 let connection, clientHeartbeat, promise;
 export async function setupNetwork() { // Establish or re-establish a connection
+  const existing = await connection;
+  if (existing?.readyState === WebSocket.OPEN) {
+    console.log('already connected');
+    return;
+  }
   connection = WEBSOCKET_URI ? 
-    new WebSocket(WEBSOCKET_URI) :  // fixme wss, localhost
+    new WebSocket(WEBSOCKET_URI) :
     { // If no WEBSOCKET_URI, operate locally with an object that has a send() method
       send(string) {
 	const {method, ...data} = JSON.parse(string);
@@ -17,8 +22,9 @@ export async function setupNetwork() { // Establish or re-establish a connection
 
   promise = new Promise(resolve => // Resolves when open, b/c sending over a still-opening socket gives error.
     connection.onopen = () => { // Start ping/pong to keep the socket from closing.
+      if (connection.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
       console.log('connection open');
-      resolve();
+      resolve(connection);
       clientHeartbeat = setInterval(() => connection.send('{"method":"ping"}'), 10e3);
     });
 
@@ -27,7 +33,7 @@ export async function setupNetwork() { // Establish or re-establish a connection
     console.warn('websocket close', event.code, event.wasClean, event.reason);
     clearInterval(clientHeartbeat);
     if (document.visibilityState === 'visible') {
-      setup();
+      setupNetwork();
       return;
     }
     const more = event.reason ? ' ' + event.reason : '';
