@@ -1,9 +1,10 @@
+import { showMessage } from './map.js';
 const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey to debug locally
 
 const handlers = {}; // Mapping key => function(messageData) for all active subcriptions
 
 let connection, clientHeartbeat, promise;
-export async function setup() { // Establish or re-establish a connection
+export async function setupNetwork() { // Establish or re-establish a connection
   connection = WEBSOCKET_URI ? 
     new WebSocket(WEBSOCKET_URI) :  // fixme wss, localhost
     { // If no WEBSOCKET_URI, operate locally with an object that has a send() method
@@ -13,9 +14,8 @@ export async function setup() { // Establish or re-establish a connection
 	this.onmessage( {data: JSON.stringify(data)} ); // Fake an Event object.
       }
     };
-  window.connection = connection; // for debugging
 
-  promise = new Promise(resolve => 
+  promise = new Promise(resolve => // Resolves when open, b/c sending over a still-opening socket gives error.
     connection.onopen = () => { // Start ping/pong to keep the socket from closing.
       console.log('connection open');
       resolve();
@@ -31,7 +31,7 @@ export async function setup() { // Establish or re-establish a connection
       return;
     }
     const more = event.reason ? ' ' + event.reason : '';
-    window.showMessage('The server connection has closed. Please reload.' + more, 'error');
+    showMessage('The server connection has closed. Please reload.' + more, 'error');
   };
 
   connection.onmessage = event => { // Call the handler previously set using subscribe, if any.
