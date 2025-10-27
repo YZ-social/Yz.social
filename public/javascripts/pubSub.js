@@ -1,40 +1,49 @@
 const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey to debug locally
 
-const handlers = {};
-const connection = WEBSOCKET_URI ? 
-      new WebSocket(WEBSOCKET_URI) :  // fixme wss, localhost
-      { // An object with send() method, impersonating a WebSocket but just local.
-	send(string) {
-	  const {method, ...data} = JSON.parse(string);
-	  if (method !== 'publish') return;
-	  this.onmessage( {data: JSON.stringify(data)} ); // Fake an Event object.
-	}
-      };
-window.connection = connection; // for debugging
+const handlers = {}; // Mapping key => function(messageData) for all active subcriptions
 
-let clientHeartbeat;
-const promise = new Promise(resolve => 
-  connection.onopen = () => { // Start ping/pong to keep the socket from closing.
-    resolve();
-    clientHeartbeat = setInterval(() => connection.send('{"method":"ping"}'), 10e3);
-  });
+let connection, clientHeartbeat, promise;
+export async function setup() { // Establish or re-establish a connection
+  connection = WEBSOCKET_URI ? 
+    new WebSocket(WEBSOCKET_URI) :  // fixme wss, localhost
+    { // If no WEBSOCKET_URI, operate locally with an object that has a send() method
+      send(string) {
+	const {method, ...data} = JSON.parse(string);
+	if (method !== 'publish') return;
+	this.onmessage( {data: JSON.stringify(data)} ); // Fake an Event object.
+      }
+    };
+  window.connection = connection; // for debugging
 
-connection.onerror = event => {
-  console.warn('websocket error', event.reason, event);
-};
+  promise = new Promise(resolve => 
+    connection.onopen = () => { // Start ping/pong to keep the socket from closing.
+      console.log('connection open');
+      resolve();
+      clientHeartbeat = setInterval(() => connection.send('{"method":"ping"}'), 10e3);
+    });
 
-connection.onclose = event => {
-  console.warn('websocket close', event.code, event.wasClean, event.reason);
-  const more = event.reason ? ' ' + event.reason : '';
-  clearInterval(clientHeartbeat);
-  window.showMessage('The server connection has closed. Please reload.' + more, 'error');
+  // onerror is of no help, as the event is generic.
+  connection.onclose = event => {
+    console.warn('websocket close', event.code, event.wasClean, event.reason);
+    clearInterval(clientHeartbeat);
+    if (document.visibilityState === 'visible') {
+      setup();
+      return;
+    }
+    const more = event.reason ? ' ' + event.reason : '';
+    window.showMessage('The server connection has closed. Please reload.' + more, 'error');
+  };
+
+  connection.onmessage = event => { // Call the handler previously set using subscribe, if any.
+    const {key, data} = JSON.parse(event.data);
+    const handler = handlers[key];
+    handler?.(data);
+  };
+
+  for (const key in handlers) { // If this is reconnecting, re-establish the subscriptions on the new socket.
+    await subscribe(key, handlers[key]);
+  }
 }
-
-connection.onmessage = event => { // Call the handler previously set using subscribe, if any.
-  const {key, data} = JSON.parse(event.data);
-  const handler = handlers[key];
-  handler?.(data);
-};
 
 export async function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
   await promise;
@@ -56,3 +65,4 @@ export async function subscribe(key, handler) { // Assign handler for key, or re
     connection.send(JSON.stringify({method: 'unsubscribe', key}));
   }
 }
+

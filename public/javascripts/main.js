@@ -1,4 +1,4 @@
-import { publish, subscribe } from './pubSub.js';
+import { setup, publish, subscribe } from './pubSub.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint} from './s2.js';
 let map;
 let markers = [];
@@ -129,6 +129,8 @@ function defaultInit() { // After two second, show San Fransisco.
     initMap(37.7749, -122.4194);
   }, 2000);
 }
+
+setup();
 
 // Get user's geolocation
 if ('geolocation' in navigator) {
