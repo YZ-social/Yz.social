@@ -2,11 +2,9 @@ import { publish, subscribe } from './pubSub.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint} from './s2.js';
 
 export let map; // Leaflet map object.
-let markers = [];
-const icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
-const infoBanner = document.getElementById('info');
 const ttl = 10 * 10e3;
 
+const infoBanner = document.getElementById('info');
 export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
   if (errorObject) {
     console.error(message, errorObject);
@@ -22,6 +20,8 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
+let markers = [];
+const icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
 export function showMarker({position, expiration}) { // Add marker at position, completing a fade out at expiration.
   const now = Date.now(),
         remaining = expiration - now;
@@ -54,6 +54,7 @@ function updateSubscriptions() { // Update current subscriptions to the new map 
   subscriptions = cells;
 }
 
+var yourLocation;
 export function initMap(lat, lng) { // Set up appropriate zoomed initial map and handlers for this position.
   // Initialize map centered on user's location
   map = L.map('map').setView([lat, lng], 14);
@@ -65,7 +66,7 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   }).addTo(map);
   
   // Add a marker at user's current location
-  L.marker([lat, lng])
+  yourLocation = L.marker([lat, lng])
     .addTo(map)
     .bindPopup('Your Location')
     .openPopup();
@@ -91,4 +92,11 @@ export function defaultInit() { // After two seconds, show San Fransisco.
   setTimeout(() => {
     initMap(37.7749, -122.4194);
   }, 2000);
+}
+
+export function updateLocation(lat, lng) {
+  if (!map) return initMap(lat, lng);
+  const latLng = [lat, lng];
+  yourLocation.setLatLng(latLng);
+  map.panTo(latLng);
 }

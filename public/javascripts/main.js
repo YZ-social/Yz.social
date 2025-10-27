@@ -1,5 +1,5 @@
 import { setupNetwork } from './pubSub.js';
-import { map, showMessage, initMap, defaultInit } from './map.js';
+import { map, showMessage, initMap, defaultInit, updateLocation } from './map.js';
 
 let aboutPopup = L.popup({className: 'tipless', content: document.getElementById('aboutContent').innerHTML});
 document.getElementById('about-btn').onclick = () => {
@@ -41,19 +41,17 @@ document.getElementById('qrButton').onclick = () => { // generate (and display) 
 qrDisplayContainer.onclick = () => qrDisplayContainer.classList.toggle('hidden', true);
 
 setupNetwork();
-// Get user's geolocation
-if ('geolocation' in navigator) {
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      initMap(lat, lng);
-    },
-    (error) => {
+
+if ('geolocation' in navigator) { // Get user's geolocation
+  navigator.geolocation.watchPosition(
+    position => {
+      const {latitude, longitude} = position.coords;
+      console.log([latitude, longitude]); window.updateLocation = updateLocation;
+      updateLocation(latitude, longitude);
+    }, error => {
       showMessage('Location access denied. Using default location.', 'error', error);
       defaultInit();
-    },
-    {
+    }, {
       enableHighAccuracy: true,
       timeout: 10000,
       maximumAge: 0
