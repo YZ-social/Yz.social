@@ -1,3 +1,4 @@
+import uuid4 from './uuid4.js';
 import { showMessage } from './map.js';
 const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey to debug locally
 
@@ -43,7 +44,13 @@ export async function setupNetwork() { // Establish or re-establish a connection
   connection.onmessage = event => { // Call the handler previously set using subscribe, if any.
     const {key, data} = JSON.parse(event.data);
     const handler = handlers[key];
-    handler?.(data);
+    if (!handler) return;
+    const index = inFlight.indexOf(key); // If it is ours inFlight, just consume it.
+    if (index >= 0) {
+      inFlight.splice(index, 1);
+      return;
+    }
+    handler(data);
   };
 
   for (const key in handlers) { // If this is reconnecting, re-establish the subscriptions on the new socket.
@@ -51,10 +58,14 @@ export async function setupNetwork() { // Establish or re-establish a connection
   }
 }
 
+const inFlight = [];
 export async function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
   await promise;
   key = key.toString();
-  connection.send(JSON.stringify({method: 'publish', key, data, timeToLive}));
+  const uuid = uuid4();
+  const message = {method: 'publish', key, data, timeToLive, uuid};
+  inFlight.push(uuid);
+  connection.send(JSON.stringify(message));
 }
 const renewals = {};
 export async function subscribe(key, handler) { // Assign handler for key, or remove any handler if falsy.
