@@ -19,7 +19,12 @@ const promise = new Promise(resolve =>
     clientHeartbeat = setInterval(() => connection.send('{"method":"ping"}'), 10e3);
   });
 
+connection.onerror = event => {
+  console.warn('websocket error', event.reason, event);
+};
+
 connection.onclose = event => {
+  console.warn('websocket close', event.code, event.wasClean, event.reason);
   const more = event.reason ? ' ' + event.reason : '';
   clearInterval(clientHeartbeat);
   window.showMessage('The server connection has closed. Please reload.' + more, 'error');
