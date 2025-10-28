@@ -45,7 +45,7 @@ export async function setupNetwork() { // Establish or re-establish a connection
     const {key, data} = JSON.parse(event.data);
     const handler = handlers[key];
     if (!handler) return;
-    const index = inFlight.indexOf(key); // If it is ours inFlight, just consume it.
+    const index = inFlight.indexOf(data.messageTag); // If it is ours inFlight, just consume it.
     if (index >= 0) {
       inFlight.splice(index, 1);
       return;
@@ -62,9 +62,13 @@ const inFlight = [];
 export async function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
   await promise;
   key = key.toString();
-  const uuid = uuid4();
-  const message = {method: 'publish', key, data, timeToLive, uuid};
-  inFlight.push(uuid);
+  const messageTag = uuid4(); // Added to data to be round-tripped. Not a user tag!
+  const message = {method: 'publish', key, data: {messageTag, ...data}, timeToLive};
+
+  // Make note of inFlight uuid and execute immediately.
+  inFlight.push(messageTag);
+  handlers[key]?.(data);
+
   connection.send(JSON.stringify(message));
 }
 const renewals = {};
