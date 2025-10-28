@@ -47,10 +47,6 @@ wss.on('connection', (ws, req) => {
     const {method, key, timeToLive, data} = JSON.parse(message);
     let keySubs = subscriptions[key] ||= new Set();
     switch (method) {
-    case 'ping': // Browser might not respond to server ping frames.
-      // So if we have the client send application-level pings to keep things open.
-      ws.send('{"method":"pong"}');
-      break;
     case 'publish':
       const string = JSON.stringify({key, timeToLive, data});
       for (const ws of keySubs) {

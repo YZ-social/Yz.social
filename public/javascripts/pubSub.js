@@ -4,7 +4,7 @@ const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey 
 
 const handlers = {}; // Mapping key => function(messageData) for all active subcriptions
 
-let connection, clientHeartbeat, promise;
+let connection, promise;
 export async function setupNetwork() { // Establish or re-establish a connection
   const existing = await connection;
   if (existing?.readyState === WebSocket.OPEN) {
@@ -22,17 +22,15 @@ export async function setupNetwork() { // Establish or re-establish a connection
     };
 
   promise = new Promise(resolve => // Resolves when open, b/c sending over a still-opening socket gives error.
-    connection.onopen = () => { // Start ping/pong to keep the socket from closing.
+    connection.onopen = () => {
       if (connection.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
       console.log('connection open');
       resolve(connection);
-      clientHeartbeat = setInterval(() => connection.send('{"method":"ping"}'), 10e3);
     });
 
   // onerror is of no help, as the event is generic.
   connection.onclose = event => {
     console.warn('websocket close', event.code, event.wasClean, event.reason);
-    clearInterval(clientHeartbeat);
     if (document.visibilityState === 'visible') {
       setupNetwork();
       return;
